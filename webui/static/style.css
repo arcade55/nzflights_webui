@@ -1,0 +1,15 @@
+/* 1. Define the cascade layer order from lowest to highest priority */
+@layer reset, theme, global, pages, components, utilities;
+
+/* 2. Import stylesheets directly into their specified layers */
+
+/* The reset now correctly goes into the 'reset' layer */
+@import url("css/base/reset.css") layer(reset);
+
+@import url("css/base/variables.css") layer(theme);
+@import url("css/base/base.css") layer(theme);
+
+@import url("css/pages/home.css") layer(pages);
+
+@import url("css/components/header.css") layer(components);
+@import url("css/components/footer.css") layer(components);
