@@ -1,5 +1,6 @@
-package main
+package search
 
+/*
 import (
 	"context"
 	"fmt"
@@ -15,17 +16,17 @@ import (
 const (
 	// These constants map to the token positions in your key structure.
 	// flights.{fa_flight_id}.{year}.{month}.{day}.{hour}.{min}.{sec}.{ident}.{origin}.{dest}
-	tokenCount      = 11
+	tokenCount         = 11
 	tokenIdxFAFlightID = 1
-	tokenIdxYear    = 2
-	tokenIdxMonth   = 3
-	tokenIdxDay     = 4
-	tokenIdxHour    = 5
-	tokenIdxMinute  = 6
-	tokenIdxSecond  = 7
-	tokenIdxIdent   = 8
-	tokenIdxOrigin  = 9
-	tokenIdxDest    = 10
+	tokenIdxYear       = 2
+	tokenIdxMonth      = 3
+	tokenIdxDay        = 4
+	tokenIdxHour       = 5
+	tokenIdxMinute     = 6
+	tokenIdxSecond     = 7
+	tokenIdxIdent      = 8
+	tokenIdxOrigin     = 9
+	tokenIdxDest       = 10
 )
 
 // KeyFilterBuilder provides a fluent interface to build NATS KV filter strings.
@@ -139,5 +140,4 @@ func FilterByAirlineAndDate(ctx context.Context, kv jetstream.KeyValue, ident st
 	log.Printf("Using filter: %s", filter)
 	return kv.Keys(ctx, jetstream.KeysFilter(filter))
 }
-
-
+*/

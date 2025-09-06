@@ -1,0 +1,17 @@
+:root {
+    --background-color: #1C1C1E;
+    --footer-background: #2C2C2E;
+    --text-color-primary: #F2F2F7;
+    --text-color-secondary: #E5E5EA;
+    --accent-color: #5856d6;
+    --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    /* Card specific variables for dark theme */
+    --card-bg: #D2E5E1;
+    --card-text-primary: #00201B;
+    --card-text-secondary: #3F4946;
+    --card-border-color: #444;
+    --card-status-ontime: #1E8449;
+    --card-status-delayed: #C0392B;
+    --card-separator-color: rgba(63, 73, 70, 0.4);
+}

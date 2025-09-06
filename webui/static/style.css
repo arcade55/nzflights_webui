@@ -13,3 +13,4 @@
 
 @import url("css/components/header.css") layer(components);
 @import url("css/components/footer.css") layer(components);
+@import url("css/components/flight_card.css") layer(components);
