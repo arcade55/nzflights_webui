@@ -1,3 +1,10 @@
+/*
+ACTION: Update this file.
+PATH:   webui/components/flight_card.go
+PURPOSE: To add the new, shared "ticket-card" class to the component's
+
+	main Div element. This applies the parent styles.
+*/
 package components
 
 import (
@@ -9,12 +16,9 @@ import (
 	"github.com/arcade55/nzflights-models"
 )
 
-// FlightCardComponent generates an HTML flight card from a Flight struct.
-// This version assumes the flight struct is fully populated with no nil pointers.
 func FlightCardComponent(flight nzflights.Flight) htma.Element {
-	// With guaranteed data, we no longer need helper variables for nil checks.
-	// We can now access all fields directly.
-	return htma.Div().ClassAttr("flight-card").AddChild(
+	// CHANGE THIS LINE: Add "ticket-card" to the class list.
+	return htma.Div().ClassAttr("ticket-card flight-card").AddChild(
 		// Card Header
 		htma.Div().ClassAttr("card-header").AddChild(
 			htma.Div().ClassAttr("airline-info").AddChild(
@@ -23,7 +27,7 @@ func FlightCardComponent(flight nzflights.Flight) htma.Element {
 					Text(flight.IdentIATA),
 				htma.Div().AddChild(
 					htma.Div().ClassAttr("flight-number").Text(flight.Ident),
-					htma.Div().ClassAttr("airline-name").Text(getAirlineName(flight.IdentIATA)), // Placeholder lookup
+					htma.Div().ClassAttr("airline-name").Text(getAirlineName(flight.IdentIATA)),
 				),
 			),
 			htma.Button().ClassAttr("card-share-button").AddChild(
@@ -37,21 +41,21 @@ func FlightCardComponent(flight nzflights.Flight) htma.Element {
 		htma.Div().ClassAttr("flight-path").AddChild(
 			htma.Div().ClassAttr("location").AddChild(
 				htma.H2().Text(flight.Origin),
-				htma.P().Text(getAirportCity(flight.Origin)), // Placeholder lookup
+				htma.P().Text(getAirportCity(flight.Origin)),
 			),
 			htma.Div().ClassAttr("path-icon").AddChild(
 				htma.Span().ClassAttr("material-symbols-outlined").Text("east"),
 			),
 			htma.Div().ClassAttr("location").AddChild(
 				htma.H2().Text(flight.Destination),
-				htma.P().Text(getAirportCity(flight.Destination)), // Placeholder lookup
+				htma.P().Text(getAirportCity(flight.Destination)),
 			),
 		),
 
 		// Flight Details
 		htma.Div().ClassAttr("flight-details").AddChild(
 			htma.Div().ClassAttr("detail-item").AddChild(
-				htma.H3().Text(flight.GateOrigin), // Direct access, no nil check needed
+				htma.H3().Text(flight.GateOrigin),
 				htma.P().Text("Gate"),
 			),
 			htma.Div().ClassAttr("detail-item").AddChild(
@@ -71,9 +75,7 @@ func FlightCardComponent(flight nzflights.Flight) htma.Element {
 	)
 }
 
-// --- Helper Functions (remain the same) ---
-
-// createStatusSpan conditionally creates the status span with the correct class.
+// --- Helper Functions ---
 func createStatusSpan(status string) htma.Element {
 	span := htma.Span().Text(status)
 	switch strings.ToLower(status) {
@@ -82,11 +84,10 @@ func createStatusSpan(status string) htma.Element {
 	case "on time":
 		return span.ClassAttr("status-ontime")
 	default:
-		return span // No special class
+		return span
 	}
 }
 
-// formatTime parses an ISO 8601 string and returns it in "03:04 PM" format.
 func formatTime(isoString string) string {
 	t, err := time.Parse(time.RFC3339, isoString)
 	if err != nil {
@@ -95,7 +96,6 @@ func formatTime(isoString string) string {
 	return t.Format("03:04 PM")
 }
 
-// getAirlineName is a placeholder for a data lookup.
 func getAirlineName(code string) string {
 	names := map[string]string{"NZ": "Air New Zealand", "MU": "China Eastern", "QF": "Qantas"}
 	if name, ok := names[code]; ok {
@@ -104,7 +104,6 @@ func getAirlineName(code string) string {
 	return "Airline"
 }
 
-// getAirportCity is a placeholder for a data lookup.
 func getAirportCity(code string) string {
 	cities := map[string]string{"AKL": "Auckland", "LAX": "Los Angeles", "PVG": "Shanghai", "SYD": "Sydney"}
 	if city, ok := cities[code]; ok {

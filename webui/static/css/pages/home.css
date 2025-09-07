@@ -1,7 +1,12 @@
+/* Remove the grid properties from main */
 main {
     padding: 1rem;
+    padding-bottom: 100px; /* Provides space for the fixed footer */
+}
+
+/* Create a new class for the grid container */
+.flight-card-container {
     display: grid;
     gap: 1.5rem;
     align-content: start;
-    padding-bottom: 100px; /* Provides space so content doesn't hide behind the fixed footer */
 }

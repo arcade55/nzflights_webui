@@ -1,16 +1,25 @@
+/*
+  ACTION: Update this file.
+  PATH:   webui/static/style.css
+  PURPOSE: To import our new shared card.css file so the browser loads it.
+*/
 /* 1. Define the cascade layer order from lowest to highest priority */
 @layer reset, theme, global, pages, components, utilities;
 
 /* 2. Import stylesheets directly into their specified layers */
-
-/* The reset now correctly goes into the 'reset' layer */
 @import url("css/base/reset.css") layer(reset);
-
 @import url("css/base/variables.css") layer(theme);
 @import url("css/base/base.css") layer(theme);
 
 @import url("css/pages/home.css") layer(pages);
+@import url("css/pages/add_flight.css") layer(pages);
 
 @import url("css/components/header.css") layer(components);
 @import url("css/components/footer.css") layer(components);
+
+/* ADD THIS LINE 👇 */
+@import url("css/components/card.css") layer(components);
+
 @import url("css/components/flight_card.css") layer(components);
+@import url("css/components/search.css") layer(components);
+

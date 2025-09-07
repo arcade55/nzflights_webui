@@ -25,6 +25,7 @@ footer {
     font-size: 11px;
     font-weight: 500;
     transition: color 0.2s ease;
+    text-decoration: none; /* <-- Add this line */
 }
 
 .nav-button svg {

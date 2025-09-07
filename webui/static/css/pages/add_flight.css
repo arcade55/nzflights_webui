@@ -1,0 +1,22 @@
+/*
+  ACTION: Update this file.
+  PATH:   webui/static/css/pages/add_flight.css
+  PURPOSE: To fix layout inconsistencies by removing redundant padding.
+*/
+.search-container {
+    /* 1. These variables define the search card's unique theme. */
+    --card-bg-focused: #D2E5E1;
+    --card-text-focused: #00201B;
+    --card-text-secondary-focused: #3F4946;
+    --card-input-bg-focused: #FFFFFF;
+    --card-outline-focused: #BFC9C5;
+
+    /* 2. Standardized layout using CSS Grid. */
+    display: grid;
+    gap: 1.5rem;
+    align-content: start;
+
+    /* 3. REMOVED: The padding is now handled by a global style on the <main> tag. */
+    /* padding: 1rem; */
+}
+

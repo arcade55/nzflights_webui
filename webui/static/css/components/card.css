@@ -1,0 +1,37 @@
+/*
+  ACTION: Update this file.
+  PATH:   webui/static/css/components/card.css
+  PURPOSE: To fix the ticket cutout effect by using the correct CSS
+           variable for the page background.
+*/
+.ticket-card {
+    border-radius: 28px;
+    padding: 24px;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ticket-card::before,
+.ticket-card::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    /* CHANGE THIS LINE: Use the correct variable name 👇 */
+    background-color: var(--background-color); /* Was --page-bg */
+}
+
+.ticket-card::before {
+    top: -12px;
+}
+
+.ticket-card::after {
+    bottom: -12px;
+}
+
