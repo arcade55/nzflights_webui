@@ -1,0 +1,115 @@
+Or, the extra call out to flightaware can only be done by subscribers as it will be for flights not in the cache, for flights that are weeks out
+
+
+
+Show thinking
+That's an excellent business model and a great way to manage costs. Architecturally, this is a form of Authorization—determining what a user is allowed to do.
+
+The best way to implement this is to keep the authorization logic completely separate from your repository. Your repository shouldn't know what a "subscriber" is. Instead, you create different configurations of your service and use middleware to decide which one a user gets to access.
+
+## Role-Based Access via Configuration
+The idea is to create two "versions" of your FlightRepository: a basic one that can't perform the expensive API call, and a premium one that can. A middleware layer will then act as a bouncer, directing users to the correct version.
+
+1. Make Your Repository Configurable
+First, we'll modify the NewRepository constructor so it can create a "lite" version of the service.
+
+
+
+// packages/flights/repository.go
+
+// ... (Repository struct and flightChecker type are the same) ...
+
+// The constructor now accepts a flag to enable the premium feature.
+func NewRepository(natsClient *natsmanager.Client, enableAPIFetch bool) *Repository {
+	repo := &Repository{
+		nats: natsClient,
+	}
+
+	// Build the strategy based on the configuration flag.
+	checkers := []flightChecker{
+		repo.getFromLocalCache,
+		repo.getFromCloudCache,
+	}
+
+	if enableAPIFetch {
+		checkers = append(checkers, repo.fetchAndWatchFromAPI)
+	}
+
+	repo.strategy = checkers // Assuming you add a 'strategy' field to the struct
+	return repo
+}
+
+// GetFlight now uses the pre-configured strategy.
+func (r *Repository) GetFlight(ctx context.Context, flightID string) ([]byte, error) {
+	for _, check := range r.strategy {
+        // ... the exact same loop logic as before ...
+	}
+    // ...
+}
+
+
+2. Create Both Repository Instances in main()
+In your main function, you'll now create two distinct instances: one for regular users and one for subscribers.
+
+// main.go
+func main() {
+	// ... (natsClient setup) ...
+
+	// Create a repository for non-subscribers (API fetch disabled).
+	basicRepo := flights.NewRepository(natsClient, false)
+
+	// Create a repository for subscribers (API fetch enabled).
+	premiumRepo := flights.gits.NewRepository(natsClient, true)
+
+	// Create a handler that has access to BOTH repositories.
+	masterHandler := handlers.NewMasterFlightHandler(basicRepo, premiumRepo)
+
+	// ... register masterHandler and start server ...
+}
+
+
+3. Create a "Master Handler" to Route Users
+This master handler checks the user's subscription status (which would be determined by an authentication middleware) and uses the appropriate repository.
+
+// handlers/flight_handler.go
+
+// MasterFlightHandler acts as a switchboard based on user role.
+type MasterFlightHandler struct {
+	basicRepo   *flights.Repository
+	premiumRepo *flights.Repository
+}
+
+func NewMasterFlightHandler(basic, premium *flights.Repository) *MasterFlightHandler {
+	return &MasterFlightHandler{
+		basicRepo:   basic,
+		premiumRepo: premium,
+	}
+}
+
+// GetFlightInfo is the single endpoint handler.
+func (h *MasterFlightHandler) GetFlightInfo(w http.ResponseWriter, r *http.Request) {
+	flightID := r.PathValue("id")
+	var data []byte
+	var err error
+
+	// An auth middleware would typically place this info in the request context.
+	if isUserSubscriber(r) {
+		// Subscribers get the premium repository with the API fallback.
+		data, err = h.premiumRepo.GetFlight(r.Context(), flightID)
+	} else {
+		// Non-subscribers get the basic, cache-only repository.
+		data, err = h.basicRepo.GetFlight(r.Context(), flightID)
+	}
+
+	if err != nil {
+		http.Error(w, "Flight data not available", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+
+## The Resulting Flow
+This approach is incredibly clean. Your core data-retrieval logic in the repository remains pure and unaware of business rules like subscriptions. All the authorization logic is handled at the application's edge, where it belongs.

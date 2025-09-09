@@ -1,27 +1,85 @@
-/*
-ACTION: Update this file.
-PATH:   main.go
-PURPOSE: To correctly implement the SSE pattern for partial updates,
-
-	with separate handlers for full pages and SSE streams.
-*/
 package main
 
 import (
+	"context"
+	"embed"
+	"errors"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	// 1. ADD THIS IMPORT BACK IN
+
 	"github.com/starfederation/datastar-go/datastar"
 
 	// These imports are needed for the SSE handlers
 	"github.com/arcade55/htma"
+	"github.com/arcade55/logging"
+	correlation "github.com/arcade55/nzflights-correlation"
 	"github.com/arcade55/nzflights-models"
+	"github.com/arcade55/nzflights_webui/natsclient"
 	"github.com/arcade55/nzflights_webui/webui/components"
 	"github.com/arcade55/nzflights_webui/webui/pages"
 )
 
+//go:embed nats.cred
+var credsFile embed.FS
+
 func main() {
+	ctx := correlation.EnsureCorrelationID(context.Background())
+	logger, cleanup, err := logging.Init(ctx, logging.Config{
+		ServiceName: "FlightApp",
+		Level:       logging.LevelDebug,
+		Format:      logging.FormatText,
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer cleanup()
+
+	log := logger.WithContext(ctx)
+
+	log.Info("Logger initialized")
+
+	creds, err := credsFile.ReadFile("nats.cred")
+	if err != nil {
+		log.Error(err, slog.String("action", "embedded_file_error"), slog.String("message", "failed to read embedded credentials file"))
+		os.Exit(1)
+	}
+
+	// --- 2. Initialize the NATS Client ---
+	// This single call sets up everything: embedded server, cloud connection, mirrors, etc.
+	client, err := natsclient.New(ctx, logger, creds)
+	if err != nil {
+		if errors.Is(err, natsclient.ErrCloudConnectionFailed) {
+			log.Error(err)
+		} else {
+			log.Error(err)
+		}
+		os.Exit(1)
+	}
+	defer client.Shutdown()
+	log.Info("🚀 Application started successfully. NATS client is ready.")
+
+	flightKeys := []string{">"}
+
+	log.Info("Starting in-memory watcher for multiple flights...", slog.Any("keys", flightKeys))
+	watcher, err := client.Flights.WatchMultipleInMemory(ctx, flightKeys)
+	if err != nil {
+		log.Error(err, slog.String("error", "failed to create in-memory watcher"))
+	} else {
+		// Start a new goroutine to handle the updates so it doesn't block.
+		go handleFlightUpdates(correlation.EnsureCorrelationID(context.Background()), logger, watcher)
+	}
+
+	// --- Setup Graceful Shutdown ---
+	// Create a channel to listen for OS signals.
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
+
 	mux := http.NewServeMux()
 
 	staticFS := http.FileServer(http.Dir("./webui/static"))
@@ -38,10 +96,10 @@ func main() {
 	mux.HandleFunc("GET /home-sse", handleHomeSSE)
 	mux.HandleFunc("GET /add-flight-sse", handleAddFlightSSE)
 
-	log.Println("Starting server on :8080")
-	err := http.ListenAndServe(":8080", mux)
+	log.Info("Starting server on :8080")
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
 
@@ -258,5 +316,28 @@ func getFlightsFromStore() []nzflights.Flight {
 			Status:       "On Time",
 			GateOrigin:   "A12",
 		},
+	}
+}
+func handleFlightUpdates(ctx context.Context, logger *logging.Logger, watcher natsclient.Watcher) {
+	log := logger.WithContext(ctx)
+	log.Info("Flight update handler started. Waiting for updates...")
+	// Defer Stop() to ensure the watcher's resources are cleaned up when the goroutine exits.
+	defer watcher.Stop()
+
+	for {
+		select {
+		case entry := <-watcher.Updates():
+			if entry == nil {
+				continue
+			}
+			// Parse the entry.Value() and push the update to your frontend.
+			log.Info("Watcher [PUT]",
+				slog.String("key", entry.Key()),
+				slog.String("value", string(entry.Value())),
+			)
+		case <-ctx.Done():
+			log.Info("Context cancelled. Stopping flight update handler.")
+			return
+		}
 	}
 }
