@@ -16,7 +16,8 @@ import (
 type Client struct {
 	// Flights provides a dedicated interface for all flight data operations.
 	Flights FlightStore
-
+	// InMemoryKV provides direct access to the in-memory mirror for monitoring.
+	InMemoryKV jetstream.KeyValue
 	// Publish a message to trigger an API fetch for a flight.
 	TriggerAPIFetch func(flightID string) error
 
@@ -86,7 +87,8 @@ func New(ctx context.Context, logger *logging.Logger, cloudCreds []byte) (*Clien
 	// --- 5. Construct the final Client object ---
 	client := &Client{
 		// HERE is where the 'unused' code is now being used.
-		Flights: newFlightStore(inMemoryKV, cloudKV),
+		Flights:    newFlightStore(inMemoryKV, cloudKV),
+		InMemoryKV: inMemoryKV,
 
 		TriggerAPIFetch: func(flightID string) error {
 			subject := fmt.Sprintf("api.flightaware.fetch.%s", flightID)

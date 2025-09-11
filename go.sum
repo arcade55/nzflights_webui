@@ -11,8 +11,8 @@ github.com/arcade55/logging v0.0.5 h1:Tz6oww1FhdoA2LUbTd1FFERx+IKZfTbZ/01EvgN+W1
 github.com/arcade55/logging v0.0.5/go.mod h1:G+QUOCSf3HyLM0AKayTIoYUjX+mwukN+QWCd4FoO6R8=
 github.com/arcade55/nzflights-correlation v0.0.0-20250829014514-d62e6d86160f h1:aUsLA+wcJLezJqEpQyewb92hLiLQ0pRhDAuyL34bXYw=
 github.com/arcade55/nzflights-correlation v0.0.0-20250829014514-d62e6d86160f/go.mod h1:kOIuQ5WzXckVz0Dj0ff3OUCx141PDuTo8TVQWcn0jaU=
-github.com/arcade55/nzflights-models v0.0.0-20250829043759-877da93875ea h1:UiQs62QlVxGkg+xVpv7Xn9HnqbxC7MOKmqczVlFeHGU=
-github.com/arcade55/nzflights-models v0.0.0-20250829043759-877da93875ea/go.mod h1:VhuHgxMqoTp0PoAqyH3fugE2u14j0LNsgWEiyTTySeM=
+github.com/arcade55/nzflights-models v0.0.2 h1:vSbjrNrHXQ/SyHk9jFMdA7xy4vkal8A6zAcOaIUHlFU=
+github.com/arcade55/nzflights-models v0.0.2/go.mod h1:VhuHgxMqoTp0PoAqyH3fugE2u14j0LNsgWEiyTTySeM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

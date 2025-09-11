@@ -10,9 +10,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	// 1. ADD THIS IMPORT BACK IN
 
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/starfederation/datastar-go/datastar"
 
 	// These imports are needed for the SSE handlers
@@ -64,16 +66,20 @@ func main() {
 	defer client.Shutdown()
 	log.Info("🚀 Application started successfully. NATS client is ready.")
 
-	flightKeys := []string{">"}
+	monitorInMemoryKV(ctx, logger, client.InMemoryKV)
 
-	log.Info("Starting in-memory watcher for multiple flights...", slog.Any("keys", flightKeys))
-	watcher, err := client.Flights.WatchMultipleInMemory(ctx, flightKeys)
-	if err != nil {
-		log.Error(err, slog.String("error", "failed to create in-memory watcher"))
-	} else {
-		// Start a new goroutine to handle the updates so it doesn't block.
-		go handleFlightUpdates(correlation.EnsureCorrelationID(context.Background()), logger, watcher)
-	}
+	/*
+		flightKeys := []string{">"}
+			log.Info("Starting in-memory watcher for multiple flights...", slog.Any("keys", flightKeys))
+			watcher, err := client.Flights.WatchMultipleInMemory(ctx, flightKeys)
+			if err != nil {
+				log.Error(err, slog.String("error", "failed to create in-memory watcher"))
+			} else {
+				// Start a new goroutine to handle the updates so it doesn't block.
+				go handleFlightUpdates(correlation.EnsureCorrelationID(context.Background()), logger, watcher)
+			}
+
+	*/
 
 	// --- Setup Graceful Shutdown ---
 	// Create a channel to listen for OS signals.
@@ -122,158 +128,8 @@ func handleAddFlight(w http.ResponseWriter, r *http.Request) {
 
 // handleHomeSSE handles Datastar requests for the home page content.
 func handleHomeSSE(w http.ResponseWriter, r *http.Request) {
-	sse := datastar.NewSSE(w, r)
-	flights := []nzflights.Flight{
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-		{
-			Ident:        "SSE",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-	}
-
-	var flightCards []htma.Renderable
-	for _, flight := range flights {
-		flightCards = append(flightCards, components.FlightCardComponent(flight))
-	}
-	content := htma.Div().ClassAttr("flight-card-container").AddChild(flightCards...)
 
 	// Patch the rendered HTML into the #main-content target's innerHTML
-	sse.PatchElements(content.Render(), datastar.WithSelector("#main-content"), datastar.WithModeInner())
 }
 
 // handleAddFlightSSE handles Datastar requests for the add flight page content.
@@ -338,6 +194,47 @@ func handleFlightUpdates(ctx context.Context, logger *logging.Logger, watcher na
 		case <-ctx.Done():
 			log.Info("Context cancelled. Stopping flight update handler.")
 			return
+		}
+	}
+}
+
+func monitorInMemoryKV(ctx context.Context, logger *logging.Logger, kv jetstream.KeyValue) {
+	log := logger.WithContext(ctx)
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("Context cancelled, stopping monitor.")
+			return
+		case <-ticker.C:
+			log.Info("--- Scanning In-Memory KV Store ---")
+
+			// The Keys() method returns a []string and an error.
+			keys, err := kv.Keys(ctx)
+			if err != nil {
+				log.Error(err, slog.String("action", "kv_keys_error"))
+				continue
+			}
+
+			// Check the length of the slice to see if it's empty.
+			if len(keys) == 0 {
+				log.Info("In-memory store is currently empty.")
+			} else {
+				// Iterate directly over the slice of strings.
+				for _, key := range keys {
+					entry, err := kv.Get(ctx, key)
+					if err != nil {
+						log.Error(err, slog.String("action", "kv_get_error"), slog.String("key", key))
+						continue
+					}
+					// Use slog attributes for structured logging.
+					log.Info("Found entry", slog.String("key", entry.Key()), slog.String("value", string(entry.Value())))
+				}
+			}
+
+			log.Info("--- Scan complete, waiting 5 seconds ---")
 		}
 	}
 }

@@ -6,7 +6,7 @@ require (
 	github.com/arcade55/htma v0.0.4
 	github.com/arcade55/logging v0.0.5
 	github.com/arcade55/nzflights-correlation v0.0.0-20250829014514-d62e6d86160f
-	github.com/arcade55/nzflights-models v0.0.0-20250829043759-877da93875ea
+	github.com/arcade55/nzflights-models v0.0.2
 	github.com/nats-io/nats-server/v2 v2.11.8
 	github.com/nats-io/nats.go v1.45.0
 	github.com/starfederation/datastar-go v1.0.2

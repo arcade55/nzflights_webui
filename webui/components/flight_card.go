@@ -16,10 +16,12 @@ import (
 	"github.com/arcade55/nzflights-models"
 )
 
-func FlightCardComponent(flight nzflights.Flight) htma.Element {
+func FlightCardComponent(flightValue nzflights.FlightValue) htma.Element {
 	// CHANGE THIS LINE: Add "ticket-card" to the class list.
-	return htma.Div().ClassAttr("ticket-card flight-card").AddChild(
+	flight := flightValue.Flight
+	return htma.Div().IDAttr(flightValue.ElementId).ClassAttr(flightValue.ElementId+" ticket-card flight-card").AddChild(
 		// Card Header
+
 		htma.Div().ClassAttr("card-header").AddChild(
 			htma.Div().ClassAttr("airline-info").AddChild(
 				htma.Div().
