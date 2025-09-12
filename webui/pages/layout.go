@@ -34,7 +34,7 @@ func LayoutComponent(title string, content htma.Renderable) htma.Element {
             `).
 			AddChild(
 				components.HeaderComponent(),
-				htma.Main().IDAttr("main-content").AddChild(content),
+				htma.Main().AddChild(content).DataOnLoadAttr("@get('/sse/flights')"),
 				components.FooterComponent(),
 				htma.Script().TypeAttr("module").SrcAttr("/static/datastar.js"),
 			),

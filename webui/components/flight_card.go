@@ -1,10 +1,3 @@
-/*
-ACTION: Update this file.
-PATH:   webui/components/flight_card.go
-PURPOSE: To add the new, shared "ticket-card" class to the component's
-
-	main Div element. This applies the parent styles.
-*/
 package components
 
 import (
@@ -16,68 +9,49 @@ import (
 	"github.com/arcade55/nzflights-models"
 )
 
+// FlightCardComponent now renders HTML that perfectly matches the static index.html prototype.
 func FlightCardComponent(flightValue nzflights.FlightValue) htma.Element {
-	// CHANGE THIS LINE: Add "ticket-card" to the class list.
 	flight := flightValue.Flight
-	return htma.Div().IDAttr(flightValue.ElementId).ClassAttr(flightValue.ElementId+" ticket-card flight-card").AddChild(
-		// Card Header
-
-		htma.Div().ClassAttr("card-header").AddChild(
-			htma.Div().ClassAttr("airline-info").AddChild(
-				htma.Div().
-					ClassAttr(fmt.Sprintf("airline-logo airline-%s", strings.ToLower(flight.IdentIATA))).
-					Text(flight.IdentIATA),
-				htma.Div().AddChild(
-					htma.Div().ClassAttr("flight-number").Text(flight.Ident),
-					htma.Div().ClassAttr("airline-name").Text(getAirlineName(flight.IdentIATA)),
+	return htma.Div().
+		IDAttr(flightValue.ElementId).
+		ClassAttr(fmt.Sprintf("%s ticket-card flight-card", flightValue.ElementId)).
+		AddChild(
+			// --- Card Header ---
+			htma.Div().ClassAttr("card-header").AddChild(
+				htma.Div().ClassAttr("airline-info").AddChild(
+					htma.Div().ClassAttr(fmt.Sprintf("airline-logo airline-%s", strings.ToLower(flight.IdentIATA))).Text(flight.IdentIATA),
+					htma.Div().AddChild(
+						htma.Div().ClassAttr("flight-number").Text(flight.Ident),
+						htma.Div().ClassAttr("airline-name").Text(getAirlineName(flight.IdentIATA)),
+					),
+				),
+				htma.Button().ClassAttr("card-share-button").AddChild(
+					htma.Span().ClassAttr("material-symbols-outlined").Text("share"),
 				),
 			),
-			htma.Button().ClassAttr("card-share-button").AddChild(
-				htma.Span().ClassAttr("material-symbols-outlined").Text("share"),
-			),
-		),
 
-		htma.Hr().ClassAttr("card-separator"),
+			htma.Div().ClassAttr("flight-details").AddChild(
+				htma.Div().ClassAttr("detail-item").AddChild(
+					htma.H3().Text(flight.GateOrigin),
+					htma.P().Text("Gate"),
+				),
+				htma.Div().ClassAttr("detail-item").AddChild(
+					htma.H3().Text(formatTime(flight.ScheduledOut)),
+					htma.P().Text("Boarding"),
+				),
+			),
 
-		// Flight Path
-		htma.Div().ClassAttr("flight-path").AddChild(
-			htma.Div().ClassAttr("location").AddChild(
-				htma.H2().Text(flight.Origin),
-				htma.P().Text(getAirportCity(flight.Origin)),
-			),
-			htma.Div().ClassAttr("path-icon").AddChild(
-				htma.Span().ClassAttr("material-symbols-outlined").Text("east"),
-			),
-			htma.Div().ClassAttr("location").AddChild(
-				htma.H2().Text(flight.Destination),
-				htma.P().Text(getAirportCity(flight.Destination)),
-			),
-		),
+			htma.Hr().ClassAttr("card-separator"),
 
-		// Flight Details
-		htma.Div().ClassAttr("flight-details").AddChild(
-			htma.Div().ClassAttr("detail-item").AddChild(
-				htma.H3().Text(flight.GateOrigin),
-				htma.P().Text("Gate"),
+			// --- Card Footer ---
+			htma.Div().ClassAttr("flight-card-container").AddChild(
+				htma.Span().Text(formatTime(flight.ScheduledOut)),
+				createStatusSpan(flight.Status),
+				htma.Span().Text(formatTime(flight.ScheduledIn)),
 			),
-			htma.Div().ClassAttr("detail-item").AddChild(
-				htma.H3().Text(formatTime(flight.ScheduledOut)),
-				htma.P().Text("Boarding"),
-			),
-		),
-
-		htma.Hr().ClassAttr("card-separator"),
-
-		// Card Footer
-		htma.Div().ClassAttr("card-footer").AddChild(
-			htma.Span().Text(formatTime(flight.ScheduledOut)),
-			createStatusSpan(flight.Status),
-			htma.Span().Text(formatTime(flight.ScheduledIn)),
-		),
-	)
+		)
 }
 
-// --- Helper Functions ---
 func createStatusSpan(status string) htma.Element {
 	span := htma.Span().Text(status)
 	switch strings.ToLower(status) {
@@ -98,18 +72,10 @@ func formatTime(isoString string) string {
 	return t.Format("03:04 PM")
 }
 
-func getAirlineName(code string) string {
-	names := map[string]string{"NZ": "Air New Zealand", "MU": "China Eastern", "QF": "Qantas"}
-	if name, ok := names[code]; ok {
-		return name
+func getAirlineName(iata string) string {
+	// In a real app, this would be more robust
+	if iata == "NZ" {
+		return "Air New Zealand"
 	}
 	return "Airline"
-}
-
-func getAirportCity(code string) string {
-	cities := map[string]string{"AKL": "Auckland", "LAX": "Los Angeles", "PVG": "Shanghai", "SYD": "Sydney"}
-	if city, ok := cities[code]; ok {
-		return city
-	}
-	return "Location"
 }

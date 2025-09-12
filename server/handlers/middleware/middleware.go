@@ -3,6 +3,9 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 // A custom type is used for the context key to avoid naming collisions
@@ -79,4 +82,43 @@ func Auth(store SessionStore) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// You'll need to run: go get github.com/google/uuid
+const VisitorCookieName = "visitor_id"
+
+// VisitorID is a middleware that ensures a visitor has a unique ID cookie.
+func VisitorID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Check if the visitor cookie already exists.
+		_, err := r.Cookie(VisitorCookieName)
+
+		// 2. If the cookie doesn't exist, create a new one.
+		if err == http.ErrNoCookie {
+			// Generate a new unique ID.
+			id := uuid.NewString()
+
+			// Create the cookie.
+			cookie := http.Cookie{
+				Name:  VisitorCookieName,
+				Value: id,
+				Path:  "/",
+				// Expires in 1 year. Use MaxAge for seconds or Expires for a specific time.
+				Expires:  time.Now().Add(365 * 24 * time.Hour),
+				HttpOnly: true, // Good practice to prevent client-side script access.
+				Secure:   true, // Recommended for production (requires HTTPS).
+				SameSite: http.SameSiteLaxMode,
+			}
+
+			// Set the cookie on the response.
+			http.SetCookie(w, &cookie)
+
+			// Add the new cookie to the current request so that the
+			// handler we are about to call can access it immediately.
+			r.AddCookie(&cookie)
+		}
+
+		// 3. Call the next handler in the chain.
+		next.ServeHTTP(w, r)
+	})
 }

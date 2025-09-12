@@ -10,19 +10,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	// 1. ADD THIS IMPORT BACK IN
 
-	"github.com/nats-io/nats.go/jetstream"
 	"github.com/starfederation/datastar-go/datastar"
 
 	// These imports are needed for the SSE handlers
 	"github.com/arcade55/htma"
 	"github.com/arcade55/logging"
 	correlation "github.com/arcade55/nzflights-correlation"
-	"github.com/arcade55/nzflights-models"
 	"github.com/arcade55/nzflights_webui/natsclient"
+	"github.com/arcade55/nzflights_webui/server/handlers/middleware"
+	"github.com/arcade55/nzflights_webui/server/handlers/standard"
 	"github.com/arcade55/nzflights_webui/webui/components"
 	"github.com/arcade55/nzflights_webui/webui/pages"
 )
@@ -43,7 +42,6 @@ func main() {
 	defer cleanup()
 
 	log := logger.WithContext(ctx)
-
 	log.Info("Logger initialized")
 
 	creds, err := credsFile.ReadFile("nats.cred")
@@ -66,21 +64,6 @@ func main() {
 	defer client.Shutdown()
 	log.Info("🚀 Application started successfully. NATS client is ready.")
 
-	monitorInMemoryKV(ctx, logger, client.InMemoryKV)
-
-	/*
-		flightKeys := []string{">"}
-			log.Info("Starting in-memory watcher for multiple flights...", slog.Any("keys", flightKeys))
-			watcher, err := client.Flights.WatchMultipleInMemory(ctx, flightKeys)
-			if err != nil {
-				log.Error(err, slog.String("error", "failed to create in-memory watcher"))
-			} else {
-				// Start a new goroutine to handle the updates so it doesn't block.
-				go handleFlightUpdates(correlation.EnsureCorrelationID(context.Background()), logger, watcher)
-			}
-
-	*/
-
 	// --- Setup Graceful Shutdown ---
 	// Create a channel to listen for OS signals.
 	shutdownChan := make(chan os.Signal, 1)
@@ -91,8 +74,9 @@ func main() {
 	staticFS := http.FileServer(http.Dir("./webui/static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
 
-	// --- Handlers for FULL page loads (these remain) ---
-	mux.HandleFunc("GET /home", handleHome)
+	home := http.HandlerFunc(standard.HomeHandler)
+
+	mux.Handle("GET /home", middleware.VisitorID(home))
 	mux.HandleFunc("GET /add-flight", handleAddFlight)
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/home", http.StatusMovedPermanently)
@@ -110,12 +94,6 @@ func main() {
 }
 
 // handleHome serves the initial, full HTML page.
-func handleHome(w http.ResponseWriter, r *http.Request) {
-	flights := getFlightsFromStore()
-	page := pages.HomePage(flights)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	page.RenderStream(w)
-}
 
 // handleAddFlight serves the initial, full HTML page.
 func handleAddFlight(w http.ResponseWriter, r *http.Request) {
@@ -147,94 +125,4 @@ func handleAddFlightSSE(w http.ResponseWriter, r *http.Request) {
 	)
 
 	sse.PatchElements(content.Render(), datastar.WithSelector("#main-content"), datastar.WithModeInner())
-}
-
-// getFlightsFromStore remains the same
-func getFlightsFromStore() []nzflights.Flight {
-	return []nzflights.Flight{
-		{
-			Ident:        "NZ4",
-			IdentIATA:    "NZ",
-			Origin:       "AKL",
-			Destination:  "LAX",
-			ScheduledOut: "2025-12-01T07:40:00Z",
-			ScheduledIn:  "2025-12-01T19:45:00Z",
-			Status:       "Delayed",
-			GateOrigin:   "B7",
-		},
-		{
-			Ident:        "QF140",
-			IdentIATA:    "QF",
-			Origin:       "AKL",
-			Destination:  "SYD",
-			ScheduledOut: "2025-12-01T18:00:00Z",
-			ScheduledIn:  "2025-12-01T21:45:00Z",
-			Status:       "On Time",
-			GateOrigin:   "A12",
-		},
-	}
-}
-func handleFlightUpdates(ctx context.Context, logger *logging.Logger, watcher natsclient.Watcher) {
-	log := logger.WithContext(ctx)
-	log.Info("Flight update handler started. Waiting for updates...")
-	// Defer Stop() to ensure the watcher's resources are cleaned up when the goroutine exits.
-	defer watcher.Stop()
-
-	for {
-		select {
-		case entry := <-watcher.Updates():
-			if entry == nil {
-				continue
-			}
-			// Parse the entry.Value() and push the update to your frontend.
-			log.Info("Watcher [PUT]",
-				slog.String("key", entry.Key()),
-				slog.String("value", string(entry.Value())),
-			)
-		case <-ctx.Done():
-			log.Info("Context cancelled. Stopping flight update handler.")
-			return
-		}
-	}
-}
-
-func monitorInMemoryKV(ctx context.Context, logger *logging.Logger, kv jetstream.KeyValue) {
-	log := logger.WithContext(ctx)
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info("Context cancelled, stopping monitor.")
-			return
-		case <-ticker.C:
-			log.Info("--- Scanning In-Memory KV Store ---")
-
-			// The Keys() method returns a []string and an error.
-			keys, err := kv.Keys(ctx)
-			if err != nil {
-				log.Error(err, slog.String("action", "kv_keys_error"))
-				continue
-			}
-
-			// Check the length of the slice to see if it's empty.
-			if len(keys) == 0 {
-				log.Info("In-memory store is currently empty.")
-			} else {
-				// Iterate directly over the slice of strings.
-				for _, key := range keys {
-					entry, err := kv.Get(ctx, key)
-					if err != nil {
-						log.Error(err, slog.String("action", "kv_get_error"), slog.String("key", key))
-						continue
-					}
-					// Use slog attributes for structured logging.
-					log.Info("Found entry", slog.String("key", entry.Key()), slog.String("value", string(entry.Value())))
-				}
-			}
-
-			log.Info("--- Scan complete, waiting 5 seconds ---")
-		}
-	}
 }
