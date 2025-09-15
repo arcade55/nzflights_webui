@@ -2,6 +2,11 @@
 
 package sse
 
+/*
+	To run this :   go test -v -tags=manual_test -run TestInteractiveUI . -manual
+
+*/
+
 import (
 	"context"
 	"encoding/json"
@@ -9,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -61,8 +67,8 @@ func TestInteractiveUI(t *testing.T) {
 	// Backend Simulator Goroutine
 	go func() {
 		flightsToSimulate := []nzflights.FlightValue{
-			{ElementId: "NZ527", Flight: nzflights.Flight{Ident: "NZ527", Origin: "Auckland", Destination: "Wellington", Status: "Scheduled"}},
-			{ElementId: "QF144", Flight: nzflights.Flight{Ident: "QF144", Origin: "Sydney", Destination: "Auckland", Status: "En Route"}},
+			{ElementId: "NZ527", Flight: nzflights.Flight{Operator: "ANZ", Ident: "NZ527", OriginCity: "Auckland", DestinationCity: "Wellington", Status: "Scheduled"}},
+			{ElementId: "QF144", Flight: nzflights.Flight{Operator: "JST", Ident: "QF144", Origin: "Sydney", Destination: "Auckland", Status: "En Route"}},
 			{ElementId: "JET345", Flight: nzflights.Flight{Ident: "JET345", Origin: "Christchurch", Destination: "Queenstown", Status: "Landed"}},
 			{ElementId: "XXX", Flight: nzflights.Flight{Ident: "XXX", Origin: "Christchurch", Destination: "Queenstown", Status: "Landed"}},
 		}
@@ -93,10 +99,16 @@ func TestInteractiveUI(t *testing.T) {
 	// Set up the HTTP server mux.
 	mux := http.NewServeMux()
 
-	// The SSE handler (struct is unmodified).
 	sseHandler := &FlightSSEHandler{KV: kv}
-	// THE FIX: The spy logging middleware has been removed.
 	mux.Handle("/sse/flights", testVisitorIDMiddleware(testUserID)(sseHandler))
+
+	// Load flights for search
+	flights, err := loadFlightsForSearch("testdata/scheduled_departures.json")
+	if err != nil {
+		t.Fatalf("Failed to load flights for search: %v", err)
+	}
+	searchHandler := &SearchSSEHandler{Flights: flights}
+	mux.Handle("/sse/search-flights", testVisitorIDMiddleware(testUserID)(searchHandler))
 
 	// The Home page handler.
 	homeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +117,7 @@ func TestInteractiveUI(t *testing.T) {
 	mux.Handle("/", testVisitorIDMiddleware(testUserID)(homeHandler))
 
 	// Handler for static files.
-	staticDir := http.Dir("../../../webui/static")
+	staticDir := http.Dir("../../static")
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(staticDir)))
 
 	// Start the server on port 8080.
@@ -117,4 +129,29 @@ func TestInteractiveUI(t *testing.T) {
 		log.Error(fmt.Errorf("server failed to start: %w", err))
 		t.FailNow()
 	}
+}
+
+type ScheduledDepartures struct {
+	ScheduledDepartures []nzflights.Flight `json:"scheduled_departures"`
+}
+
+func loadFlightsForSearch(path string) (map[string]nzflights.FlightValue, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var departures ScheduledDepartures
+	if err := json.Unmarshal(file, &departures); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal json: %w", err)
+	}
+
+	flights := make(map[string]nzflights.FlightValue)
+	for _, f := range departures.ScheduledDepartures {
+		flights[f.Ident] = nzflights.FlightValue{
+			ElementId: f.Ident,
+			Flight:    f,
+		}
+	}
+	return flights, nil
 }

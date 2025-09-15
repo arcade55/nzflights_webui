@@ -7,7 +7,11 @@ import (
 func HomePage() htma.Element {
 
 	// The ID for this container must match the selector used in the SSE handler
-	mainContent := htma.Div().ClassAttr("flight-card-container").IDAttr("flights")
+
+	mainContent := htma.Main().AddChild(
+		htma.SearchCard().IDAttr("search-results"),
+		htma.Div().ClassAttr("flight-card-container").IDAttr("flights"),
+	)
 
 	return LayoutComponent("My Flights", mainContent)
 }

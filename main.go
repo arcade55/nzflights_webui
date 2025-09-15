@@ -77,37 +77,38 @@ func main() {
 	home := http.HandlerFunc(standard.HomeHandler)
 
 	mux.Handle("GET /home", middleware.VisitorID(home))
+	mux.HandleFunc("GET /home-sse", handleHomeSSE)
 	mux.HandleFunc("GET /add-flight", handleAddFlight)
+	mux.HandleFunc("GET /add-flight-sse", handleAddFlightSSE)
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/home", http.StatusMovedPermanently)
 	})
 
-	// --- 2. NEW: Handlers for Datastar SSE updates ---
-	mux.HandleFunc("GET /home-sse", handleHomeSSE)
-	mux.HandleFunc("GET /add-flight-sse", handleAddFlightSSE)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	log.Info("Starting server on :8080")
-	err = http.ListenAndServe(":8080", mux)
+	log.Info("Starting server on port " + port)
+	err = http.ListenAndServe(":"+port, mux)
 	if err != nil {
 		log.Error(err)
 	}
 }
 
-// handleHome serves the initial, full HTML page.
+// handleHomeSSE handles Datastar requests for the home page content.
+func handleHomeSSE(w http.ResponseWriter, r *http.Request) {
+	sse := datastar.NewSSE(w, r)
+	// The ID for this container must match the selector used in the SSE handler
+	mainContent := htma.Div().ClassAttr("flight-card-container").IDAttr("flights")
+	sse.PatchElements(mainContent.Render(), datastar.WithSelector("#main-content"), datastar.WithModeInner())
+}
 
 // handleAddFlight serves the initial, full HTML page.
 func handleAddFlight(w http.ResponseWriter, r *http.Request) {
 	page := pages.AddFlightPage()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	page.RenderStream(w)
-}
-
-// --- 3. NEW SSE HANDLERS ---
-
-// handleHomeSSE handles Datastar requests for the home page content.
-func handleHomeSSE(w http.ResponseWriter, r *http.Request) {
-
-	// Patch the rendered HTML into the #main-content target's innerHTML
 }
 
 // handleAddFlightSSE handles Datastar requests for the add flight page content.

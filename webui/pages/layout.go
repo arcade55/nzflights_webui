@@ -24,6 +24,9 @@ func LayoutComponent(title string, content htma.Renderable) htma.Element {
 			htma.Link().HrefAttr("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap").RelAttr("stylesheet"),
 			htma.Link().HrefAttr("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0").RelAttr("stylesheet"),
 			htma.Link().RelAttr("stylesheet").HrefAttr("/static/style.css"),
+			htma.Script().TypeAttr("module").SrcAttr("/static/datastar.js"),
+			htma.Script().TypeAttr("module").SrcAttr("/static/flightcard.js"),
+			htma.Script().TypeAttr("module").SrcAttr("/static/searchcard.js"),
 		),
 		// ADD data-signals and data-effect attributes HERE 👇
 		htma.Body().
