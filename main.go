@@ -29,20 +29,20 @@ import (
 //go:embed nats.cred
 var credsFile embed.FS
 
+
+
 func main() {
 	ctx := correlation.EnsureCorrelationID(context.Background())
-	logger, cleanup, err := logging.Init(ctx, logging.Config{
-		ServiceName: "FlightApp",
-		Level:       logging.LevelDebug,
-		Format:      logging.FormatText,
-	})
-	if err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-	defer cleanup()
 
-	log := logger.WithContext(ctx)
-	log.Info("Logger initialized")
+	cfg := logging.Config{
+		ServiceName: "my-app-service", // Required for base attributes.
+		Output:      os.Stdout,        // Or a file, etc.
+		Level:       logging.LevelInfo,
+		Format:      logging.FormatPretty, // Or JSON/Text.
+		AddSource:   true,                 // Includes file/line in logs.
+	}
+
+	logger, cleanup, err := logging.Init(ctx, cfg)
 
 	creds, err := credsFile.ReadFile("nats.cred")
 	if err != nil {

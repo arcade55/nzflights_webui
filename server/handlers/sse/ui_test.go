@@ -3,8 +3,17 @@
 package sse
 
 /*
-	To run this :   go test -v -tags=manual_test -run TestInteractiveUI . -manual
+	To run this: go test -v -tags=manual_test -run TestInteractiveUI . -manual
 
+	Manual Testing Instructions:
+	1. Run the test command above to start the server on http://localhost:8080.
+	2. Open the URL in your browser.
+	3. The home page should load with a flight list (updated via SSE as the simulator adds flights).
+	4. To test search: Assuming the home page has a search input (bound to POST to /sse/search-flights via DataStar or similar),
+	   type a partial flight identifier (e.g., "NZ", "QF", "JET", or "XXX") and observe the results rendering in #search-results.
+	   The search queries the static flights loaded from testdata/scheduled_departures.json.
+	5. Verify SSE updates: Watch the flight list update every ~10s as the simulator adds flights.
+	6. Stop the server with Ctrl+C.
 */
 
 import (
@@ -26,6 +35,83 @@ import (
 
 // Define a flag to ensure this test only runs when you explicitly ask for it.
 var manualTest = flag.Bool("manual", false, "run manual, long-running tests")
+
+// generateSampleFlights creates a map with two representative FlightValue entries.
+func generateSampleFlights() map[string]nzflights.FlightValue {
+	flights := make(map[string]nzflights.FlightValue)
+
+	// Flight 1: NZ123 from Auckland to Wellington
+	f1 := nzflights.Flight{
+		Ident:           "NZ123",
+		IdentICAO:       "ANZ123",
+		IdentIATA:       "NZ123",
+		Operator:        "ANZ",
+		FAFlightID:      "ANZ123-1756532266-airline-1234",
+		Origin:          "NZAA",
+		OriginIATA:      "AKL",
+		OriginCity:      "Auckland",
+		Destination:     "NZWN",
+		DestinationIATA: "WLG",
+		DestinationCity: "Wellington",
+		AircraftType:    "A320",
+		ScheduledOut:    "2025-09-15T09:00:00Z",
+		ScheduledIn:     "2025-09-15T10:15:00Z",
+		ActualOff:       "",
+		ActualOn:        "",
+		Status:          "Scheduled",
+		GateOrigin:      "24",
+		GateDestination: "12",
+		Alerts:          nil,
+	}
+	flights["NZ123"] = nzflights.FlightValue{
+		CorrelationID: "webhook-uuid-98765",
+		NatsKey:       "users.test.flights.owned.NZ123",
+		ElementId:     "NZ123",
+		LastUpdated:   time.Now(),
+		Flight:        f1,
+	}
+
+	// Flight 2: QF456 from Sydney to Christchurch
+	f2 := nzflights.Flight{
+		Ident:           "QF456",
+		IdentICAO:       "QFA456",
+		IdentIATA:       "QF456",
+		Operator:        "QFA",
+		FAFlightID:      "QFA456-1756536446-airline-5678",
+		Origin:          "YSSY",
+		OriginIATA:      "SYD",
+		OriginCity:      "Sydney",
+		Destination:     "NZCH",
+		DestinationIATA: "CHC",
+		DestinationCity: "Christchurch",
+		AircraftType:    "B738",
+		ScheduledOut:    "2025-09-15T12:30:00Z",
+		ScheduledIn:     "2025-09-15T17:45:00Z",
+		ActualOff:       "2025-09-15T12:35:00Z",
+		ActualOn:        "",
+		Status:          "En Route",
+		GateOrigin:      "T1-15",
+		GateDestination: "9",
+		Alerts: []nzflights.Alert{
+			{
+				LongDescription:  "Minor departure delay due to air traffic control.",
+				ShortDescription: "Delayed departure",
+				Summary:          "Flight QF456 delayed by 5 minutes.",
+				EventCode:        "DELAY",
+				AlertID:          1001,
+			},
+		},
+	}
+	flights["QF456"] = nzflights.FlightValue{
+		CorrelationID: "webhook-uuid-54321",
+		NatsKey:       "users.test.flights.owned.QF456",
+		ElementId:     "QF456",
+		LastUpdated:   time.Now(),
+		Flight:        f2,
+	}
+
+	return flights
+}
 
 // testVisitorIDMiddleware always sets the SAME visitor ID for predictable test keys.
 func testVisitorIDMiddleware(userID string) func(http.Handler) http.Handler {
@@ -71,13 +157,13 @@ func TestInteractiveUI(t *testing.T) {
 			{ElementId: "QF144", Flight: nzflights.Flight{Operator: "JST", Ident: "QF144", Origin: "Sydney", Destination: "Auckland", Status: "En Route"}},
 			{ElementId: "JET345", Flight: nzflights.Flight{Ident: "JET345", Origin: "Christchurch", Destination: "Queenstown", Status: "Landed"}},
 			{ElementId: "XXX", Flight: nzflights.Flight{Ident: "XXX", Origin: "Christchurch", Destination: "Queenstown", Status: "Landed"}},
+			{ElementId: "NZ999", Flight: nzflights.Flight{Operator: "ANZ", Ident: "NZ999", OriginCity: "Wellington", DestinationCity: "Dunedin", Status: "Delayed"}},
+			{ElementId: "QF200", Flight: nzflights.Flight{Operator: "QFA", Ident: "QF200", Origin: "Melbourne", Destination: "Christchurch", Status: "Boarding"}},
 		}
 		var flightIndex int
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		for {
-
-			time.Sleep(10 * time.Second)
 			if flightIndex >= len(flightsToSimulate) {
 				log.Info("SIMULATOR: All flights have been added.")
 				return
@@ -90,9 +176,11 @@ func TestInteractiveUI(t *testing.T) {
 			if _, err := kv.Put(context.Background(), key, data); err != nil {
 				log.Error(fmt.Errorf("SIMULATOR: failed to put flight: %w", err))
 			} else {
-				log.Info("SIMULATOR: Wrote update for flight", slog.String("flightID", flight.Flight.Ident))
+				log.Info("SIMULATOR: Wrote update for flight", slog.String("flightID", flight.Flight.Ident), slog.String("status", flight.Flight.Status))
 			}
 			flightIndex++
+
+			time.Sleep(1 * time.Second) // Stagger additions for easier observation.
 		}
 	}()
 
@@ -103,12 +191,9 @@ func TestInteractiveUI(t *testing.T) {
 	mux.Handle("/sse/flights", testVisitorIDMiddleware(testUserID)(sseHandler))
 
 	// Load flights for search
-	flights, err := loadFlightsForSearch("testdata/scheduled_departures.json")
-	if err != nil {
-		t.Fatalf("Failed to load flights for search: %v", err)
-	}
+	flights := generateSampleFlights()
 	searchHandler := &SearchSSEHandler{Flights: flights}
-	mux.Handle("/sse/search-flights", testVisitorIDMiddleware(testUserID)(searchHandler))
+	mux.Handle("/search-flights", testVisitorIDMiddleware(testUserID)(http.HandlerFunc(searchHandler.Search)))
 
 	// The Home page handler.
 	homeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +202,8 @@ func TestInteractiveUI(t *testing.T) {
 	mux.Handle("/", testVisitorIDMiddleware(testUserID)(homeHandler))
 
 	// Handler for static files.
-	staticDir := http.Dir("../../static")
+	staticDir := http.Dir("../../../webui/static")
+	log.Info("Static directory path", slog.String("path", string(staticDir)))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(staticDir)))
 
 	// Start the server on port 8080.

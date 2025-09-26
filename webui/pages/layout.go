@@ -37,9 +37,28 @@ func LayoutComponent(title string, content htma.Renderable) htma.Element {
             `).
 			AddChild(
 				components.HeaderComponent(),
-				htma.Main().AddChild(content).DataOnLoadAttr("@get('/sse/flights')"),
+				htma.Main().
+					AddChild(htma.SearchCard().
+						Attr("data-on-searchtermchange__debounce300ms", "$searchTerm = evt.detail.value; @post('/search-flights')").
+						Attr("data-fetch-url", "/search-flights").
+						Attr("data-fetch-method", "post").
+						Attr("data-fetch-body", "signals"),
+						htma.Div().ClassAttr("container").DataSignalsAttr(`{ "searchTerm": "", "myFlights": [] }`),
+
+						htma.Div().IDAttr("search-results").ClassAttr("search-results-container"),
+						htma.Div().DataShowAttr("$myFlights.length > 0").AddChild(
+							htma.H2().Text("Matching Flights"),
+							htma.Ul().ClassAttr("tracked-flight-list").AddChild(
+								htma.Template().Attr("data-for-flight", "$myFlights").AddChild(
+									htma.Li().ClassAttr("tracked-flight-item").AddChild(
+										htma.Span().DataTextAttr("`${$flight.id}: ${$flight.origin} → ${$flight.destination}`"),
+									),
+								),
+							),
+						),
+
+						htma.Div().ClassAttr("flight-card-container").IDAttr("flights")).DataOnLoadAttr("@get('/sse/flights')"),
 				components.FooterComponent(),
-				htma.Script().TypeAttr("module").SrcAttr("/static/datastar.js"),
 			),
 	)
 }

@@ -78,3 +78,26 @@
     margin-top: 24px;
 }
 
+.mini-card {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin: 10px 0;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mini-card:hover {
+  background-color: #eee;
+}
+.flight-info {
+  display: flex;
+  flex-direction: column;
+}
+.flight-id {
+  font-weight: bold;
+}
+.flight-route {
+  color: #666;
+}
